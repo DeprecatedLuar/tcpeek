@@ -4,14 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
-
-	"tcpeek/internal/config"
 )
-
-var logFile = filepath.Join(config.ConfigDir, "tcpeek.log")
 
 func main() {
 	if len(os.Args) < 2 {
@@ -44,15 +39,9 @@ func daemonize() {
 
 	exe, _ := os.Executable()
 
-	logF, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)
-		os.Exit(1)
-	}
-
 	cmd := exec.Command(exe)
-	cmd.Stdout = logF
-	cmd.Stderr = logF
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 	cmd.Dir, _ = os.UserHomeDir()
 
 	if err := cmd.Start(); err != nil {
