@@ -13,7 +13,12 @@ func restart() {
 	if data, err := os.ReadFile(pidFile); err == nil {
 		if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
 			syscall.Kill(pid, syscall.SIGTERM)
-			time.Sleep(500 * time.Millisecond)
+			for i := 0; i < 10; i++ {
+				time.Sleep(200 * time.Millisecond)
+				if getRunningPid() == 0 {
+					break
+				}
+			}
 		}
 		os.Remove(pidFile)
 	}

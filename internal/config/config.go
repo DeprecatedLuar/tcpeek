@@ -33,13 +33,15 @@ type Config struct {
 }
 
 type Listener struct {
-	IP     string
-	Port   int
-	Events map[string]string
+	IP        string
+	Port      int
+	Events    map[string]string
+	Reconnect bool
 }
 
 type tomlConfig struct {
-	Events map[string]string `toml:"events"`
+	Reconnect *bool             `toml:"reconnect"`
+	Events    map[string]string `toml:"events"`
 }
 
 func Load() (*Config, error) {
@@ -91,10 +93,13 @@ func parseFile(path, ip string, port int) (*Listener, error) {
 		return nil, err
 	}
 
+	reconnect := tc.Reconnect == nil || *tc.Reconnect
+
 	return &Listener{
-		IP:     ip,
-		Port:   port,
-		Events: tc.Events,
+		IP:        ip,
+		Port:      port,
+		Events:    tc.Events,
+		Reconnect: reconnect,
 	}, nil
 }
 

@@ -7,22 +7,42 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
+	"time"
 
 	"tcpeek/internal/executor"
 )
 
+const maxBackoff = 30 * time.Second
+
 type Listener struct {
-	IP     string
-	Port   int
-	Events map[string]string
-	conn   net.Conn
+	IP            string
+	Port          int
+	Events        map[string]string
+	debug         bool
+	autoReconnect bool
+	mu            sync.Mutex
+	conn          net.Conn
+	done          chan struct{}
+	reconnect     chan struct{}
 }
 
-func New(ip string, port int, events map[string]string) *Listener {
+func New(ip string, port int, events map[string]string, debug, autoReconnect bool) *Listener {
 	return &Listener{
-		IP:     ip,
-		Port:   port,
-		Events: events,
+		IP:            ip,
+		Port:          port,
+		Events:        events,
+		debug:         debug,
+		autoReconnect: autoReconnect,
+		done:          make(chan struct{}),
+		reconnect:     make(chan struct{}, 1),
+	}
+}
+
+func (l *Listener) Reconnect() {
+	select {
+	case l.reconnect <- struct{}{}:
+	default:
 	}
 }
 
@@ -31,28 +51,73 @@ func (l *Listener) Addr() string {
 }
 
 func (l *Listener) Start() error {
-	conn, err := net.Dial("tcp", l.Addr())
-	if err != nil {
-		return err
-	}
-	l.conn = conn
-
-	log.Printf("[INFO] Connected to %s (%d events configured)", l.Addr(), len(l.Events))
-
-	go l.handle()
+	go l.run()
 	return nil
 }
 
 func (l *Listener) Stop() error {
+	close(l.done)
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.conn != nil {
 		return l.conn.Close()
 	}
 	return nil
 }
 
-func (l *Listener) handle() {
-	defer l.conn.Close()
-	scanner := bufio.NewScanner(l.conn)
+func (l *Listener) run() {
+	backoff := time.Second
+
+	for {
+		select {
+		case <-l.done:
+			return
+		default:
+		}
+
+		conn, err := net.Dial("tcp", l.Addr())
+		if err != nil {
+			if !l.autoReconnect {
+				if l.debug {
+					log.Printf("[DEBUG] [%s] Connect failed, waiting for reconnect signal", l.Addr())
+				}
+				select {
+				case <-l.done:
+					return
+				case <-l.reconnect:
+				}
+				continue
+			}
+			if l.debug {
+				log.Printf("[DEBUG] [%s] Connect failed, retrying in %s", l.Addr(), backoff)
+			}
+			select {
+			case <-l.done:
+				return
+			case <-l.reconnect:
+				backoff = time.Second
+			case <-time.After(backoff):
+				backoff = min(backoff*2, maxBackoff)
+			}
+			continue
+		}
+
+		backoff = time.Second
+		log.Printf("[INFO] Connected to %s (%d events configured)", l.Addr(), len(l.Events))
+
+		l.mu.Lock()
+		l.conn = conn
+		l.mu.Unlock()
+
+		l.handle(conn)
+
+		log.Printf("[INFO] [%s] Connection lost, reconnecting", l.Addr())
+	}
+}
+
+func (l *Listener) handle(conn net.Conn) {
+	defer conn.Close()
+	scanner := bufio.NewScanner(conn)
 
 	for scanner.Scan() {
 		payload := strings.TrimSpace(scanner.Text())
@@ -60,7 +125,9 @@ func (l *Listener) handle() {
 			continue
 		}
 
-		log.Printf("[INFO] [%s] Received: %q", l.Addr(), payload)
+		if l.debug {
+			log.Printf("[DEBUG] [%s] Received: %q", l.Addr(), payload)
+		}
 
 		cmd, ok := l.match(payload)
 		if !ok {
@@ -68,12 +135,14 @@ func (l *Listener) handle() {
 			continue
 		}
 
+		if l.debug {
+			log.Printf("[DEBUG] [%s] Event %q → %s", l.Addr(), payload, cmd)
+		}
 		executor.Run(cmd)
 	}
 }
 
 func (l *Listener) match(payload string) (string, bool) {
-	// Try JSON: extract all leaf values and match against event keys
 	var data map[string]any
 	if err := json.Unmarshal([]byte(payload), &data); err == nil {
 		for _, value := range extractLeafValues(data) {
@@ -83,7 +152,6 @@ func (l *Listener) match(payload string) (string, bool) {
 		}
 	}
 
-	// Fall back to exact string match
 	cmd, ok := l.Events[payload]
 	return cmd, ok
 }
@@ -99,29 +167,4 @@ func extractLeafValues(data map[string]any) []string {
 		}
 	}
 	return values
-}
-
-func extractPath(data map[string]any, path string) (string, bool) {
-	parts := strings.Split(path, ".")
-	var current any = data
-
-	for _, part := range parts {
-		m, ok := current.(map[string]any)
-		if !ok {
-			return "", false
-		}
-		current, ok = m[part]
-		if !ok {
-			return "", false
-		}
-	}
-
-	switch v := current.(type) {
-	case string:
-		return v, true
-	case float64:
-		return fmt.Sprintf("%v", v), true
-	default:
-		return fmt.Sprintf("%v", v), true
-	}
 }

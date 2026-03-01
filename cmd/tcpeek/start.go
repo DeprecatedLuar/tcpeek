@@ -10,7 +10,7 @@ import (
 	"tcpeek/internal/listener"
 )
 
-func start() {
+func start(debug bool) {
 	log.Println("[INFO] tcpeek starting")
 
 	if err := writePID(); err != nil {
@@ -29,17 +29,28 @@ func start() {
 
 	var listeners []*listener.Listener
 	for _, lc := range cfg.Listeners {
-		l := listener.New(lc.IP, lc.Port, lc.Events)
-		if err := l.Start(); err != nil {
-			log.Printf("[ERROR] Failed to start listener %s:%d: %v", lc.IP, lc.Port, err)
-			continue
-		}
+		l := listener.New(lc.IP, lc.Port, lc.Events, debug, lc.Reconnect)
+		l.Start()
 		listeners = append(listeners, l)
 	}
 
-	if len(listeners) == 0 {
-		log.Fatal("[ERROR] No listeners started")
+	if debug {
+		log.Printf("[DEBUG] %d listener(s) configured:", len(listeners))
+		for _, l := range listeners {
+			log.Printf("[DEBUG]   %s (%d events)", l.Addr(), len(l.Events))
+		}
 	}
+
+	usr1 := make(chan os.Signal, 1)
+	signal.Notify(usr1, syscall.SIGUSR1)
+	go func() {
+		for range usr1 {
+			log.Println("[INFO] Reconnecting all listeners")
+			for _, l := range listeners {
+				l.Reconnect()
+			}
+		}
+	}()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

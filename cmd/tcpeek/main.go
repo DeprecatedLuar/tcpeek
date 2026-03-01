@@ -9,20 +9,32 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		start()
+	var debug bool
+	var args []string
+	for _, a := range os.Args[1:] {
+		if a == "--debug" {
+			debug = true
+		} else {
+			args = append(args, a)
+		}
+	}
+
+	if len(args) == 0 {
+		start(debug)
 		return
 	}
 
-	switch os.Args[1] {
+	switch args[0] {
 	case "-d":
 		daemonize()
 	case "stop":
 		stop()
 	case "restart":
 		restart()
+	case "reconnect":
+		reconnectCmd()
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		os.Exit(1)
 	}
 }
