@@ -7,11 +7,9 @@ import (
 )
 
 func reconnectCmd() {
-	pid := getRunningPid()
-	if pid == 0 {
-		fmt.Println("tcpeek not running, starting...")
-		start(false)
-		return
+	pid, running := daemon.PID()
+	if !running {
+		log.Fatalf("[ERROR] tcpeek is not running")
 	}
 
 	if err := syscall.Kill(pid, syscall.SIGUSR1); err != nil {

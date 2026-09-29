@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -8,23 +11,32 @@ import (
 
 	"github.com/DeprecatedLuar/tcpeek/internal/config"
 	"github.com/DeprecatedLuar/tcpeek/internal/listener"
+	"github.com/DeprecatedLuar/tcpeek/internal/logfile"
 )
 
 func start(debug bool) {
-	log.Println("[INFO] tcpeek starting")
-
-	if err := writePID(); err != nil {
-		log.Fatalf("[ERROR] Failed to write PID file: %v", err)
+	if w, err := logfile.Open(); err != nil {
+		log.Printf("[WARN] file logging disabled: %v", err)
+	} else {
+		defer w.Close()
+		log.SetOutput(io.MultiWriter(os.Stderr, w))
 	}
-	defer removePID()
+
+	if err := daemon.Run(func(ctx context.Context) error { return serve(ctx, debug) }); err != nil {
+		log.Fatalf("[ERROR] %v", err)
+	}
+}
+
+func serve(ctx context.Context, debug bool) error {
+	log.Println("[INFO] tcpeek starting")
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("[ERROR] Failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	if len(cfg.Listeners) == 0 {
-		log.Fatalf("[ERROR] No listeners configured in %s", config.ConfigDir)
+		return fmt.Errorf("no listeners configured in %s", config.ConfigDir)
 	}
 
 	var listeners []*listener.Listener
@@ -52,12 +64,11 @@ func start(debug bool) {
 		}
 	}()
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
+	<-ctx.Done()
 
 	log.Println("[INFO] Shutting down")
 	for _, l := range listeners {
 		l.Stop()
 	}
+	return nil
 }

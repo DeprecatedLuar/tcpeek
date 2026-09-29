@@ -16,7 +16,7 @@
           pname = "tcpeek";
           version = "0.1.0";
           src = ./.;
-          vendorHash = "sha256-ddUmNQMpN/7I+Hg1GQsi8ZRphO9AaSIvfILhyE9CLLQ=";
+          vendorHash = "sha256-6Uin5Zla/AbtKKZRdV26TkNk7ITxxIUw8jUkZLQjnjg=";
           subPackages = [ "cmd/tcpeek" ];
         };
 

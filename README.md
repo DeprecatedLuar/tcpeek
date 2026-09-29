@@ -29,11 +29,12 @@ When tcpeek receives `nav` on port 9999, it runs `border-ctl --color blue`.
 ## Usage
 
 ```bash
-tcpeek start      # foreground
-tcpeek start -d   # daemon mode
-tcpeek stop       # stop daemon
-tcpeek restart    # restart daemon
+tcpeek            # run in the foreground (single instance)
+tcpeek stop       # stop the running instance
+tcpeek reconnect  # re-establish TCP connections
 ```
+
+tcpeek does not background itself; run it under a supervisor such as a systemd user service.
 
 ## License
 

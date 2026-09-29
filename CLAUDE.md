@@ -18,10 +18,10 @@ go mod tidy      # after adding/removing imports
 
 ```
 cmd/tcpeek/     # CLI entry point
-  main.go            # arg parsing, routes to commands
-  start.go           # loads config, starts listeners
-  stop.go            # reads PID file, sends SIGTERM
-  restart.go         # stop + start -d
+  main.go            # arg parsing, routes to commands, shared daemon handle
+  start.go           # runs under daemon lock: loads config, starts listeners
+  stop.go            # daemon.Stop()
+  reconnect.go       # SIGUSR1 to the running instance
 
 internal/
   config/            # loads TOML configs from $XDG_CONFIG_HOME/tcpeek/{IP}/{PORT}.toml

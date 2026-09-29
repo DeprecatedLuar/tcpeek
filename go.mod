@@ -5,6 +5,7 @@ go 1.25.5
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/DeprecatedLuar/gohelp-luar v0.2.3
+	github.com/deprecatedluar/luar-daemonator v0.2.0
 )
 
 require (
