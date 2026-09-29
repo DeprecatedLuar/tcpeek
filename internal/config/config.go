@@ -68,8 +68,10 @@ func Load() (*Config, error) {
 		}
 		ip := ipDir.Name()
 
-		portFiles, err := os.ReadDir(filepath.Join(ConfigDir, ip))
+		ipPath := filepath.Join(ConfigDir, ip)
+		portFiles, err := os.ReadDir(ipPath)
 		if err != nil {
+			log.Printf("[WARN] skipping %s: %v", ipPath, err)
 			continue
 		}
 
@@ -78,15 +80,17 @@ func Load() (*Config, error) {
 				continue
 			}
 
+			filePath := filepath.Join(ipPath, portFile.Name())
 			portStr := strings.TrimSuffix(portFile.Name(), TomlExt)
 			port, err := strconv.Atoi(portStr)
 			if err != nil {
+				log.Printf("[WARN] skipping %s: invalid port", filePath)
 				continue
 			}
 
-			filePath := filepath.Join(ConfigDir, ip, portFile.Name())
 			listener, err := parseFile(filePath, ip, port)
 			if err != nil {
+				log.Printf("[WARN] skipping %s: %v", filePath, err)
 				continue
 			}
 

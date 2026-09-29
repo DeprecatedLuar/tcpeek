@@ -78,9 +78,7 @@ func (l *Listener) run() {
 		conn, err := net.Dial("tcp", l.Addr())
 		if err != nil {
 			if !l.autoReconnect {
-				if l.debug {
-					log.Printf("[DEBUG] [%s] Connect failed, waiting for reconnect signal", l.Addr())
-				}
+				log.Printf("[WARN] [%s] Connect failed, waiting for reconnect signal: %v", l.Addr(), err)
 				select {
 				case <-l.done:
 					return
