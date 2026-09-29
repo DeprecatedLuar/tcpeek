@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"tcpeek/internal/executor"
+	"github.com/DeprecatedLuar/tcpeek/internal/executor"
 )
 
 const maxBackoff = 30 * time.Second

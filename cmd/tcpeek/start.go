@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"tcpeek/internal/config"
-	"tcpeek/internal/listener"
+	"github.com/DeprecatedLuar/tcpeek/internal/config"
+	"github.com/DeprecatedLuar/tcpeek/internal/listener"
 )
 
 func start(debug bool) {

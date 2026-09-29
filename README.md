@@ -14,7 +14,7 @@ go build -o tcpeek ./cmd/tcpeek
 
 ## Configuration
 
-Config files live at `$XDG_CONFIG_HOME/tcpeek/{IP}/{PORT}.toml`
+Config files live at `$TCPEEK_CONFIG_DIR/{IP}/{PORT}.toml` if `TCPEEK_CONFIG_DIR` is set, otherwise `$XDG_CONFIG_HOME/tcpeek/{IP}/{PORT}.toml`, falling back to `~/.config/tcpeek/{IP}/{PORT}.toml`.
 
 Example: `~/.config/tcpeek/127.0.0.1/9999.toml`
 

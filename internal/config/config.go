@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 const (
 	ConfigDirName = "tcpeek"
 	TomlExt       = ".toml"
+	EnvConfigDir  = "TCPEEK_CONFIG_DIR"
 )
 
 var (
@@ -20,9 +22,17 @@ var (
 )
 
 func init() {
+	if dir := os.Getenv(EnvConfigDir); dir != "" {
+		ConfigDir = dir
+		return
+	}
+
 	configBase := os.Getenv("XDG_CONFIG_HOME")
 	if configBase == "" {
-		home, _ := os.UserHomeDir()
+		home, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatalf("[ERROR] resolving home directory: %v", err)
+		}
 		configBase = filepath.Join(home, ".config")
 	}
 	ConfigDir = filepath.Join(configBase, ConfigDirName)

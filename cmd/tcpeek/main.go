@@ -33,8 +33,11 @@ func main() {
 		restart()
 	case "reconnect":
 		reconnectCmd()
+	case "help", "-h", "--help":
+		helpCmd(args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
+		fmt.Fprintln(os.Stderr, "Run 'tcpeek help' for usage.")
 		os.Exit(1)
 	}
 }
